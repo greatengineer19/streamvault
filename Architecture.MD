@@ -122,10 +122,10 @@ Consistent playback regardless of file size is achieved via HTTP Range Requests:
 |---|---|
 | Cloudflare R2 storage (10GB) | **$0** (free) |
 | Cloudflare R2 egress | **$0** (free) |
-| Fly.io API (1 shared CPU, 256MB, auto-stop) | ~$1.94 |
-| Fly.io Postgres (shared) | ~$3.00 |
+| Railway API (2 vCPU, Memory 1GB, auto-stop) | (free) |
+| Neon Tech Postgres (shared) | (free) |
 | Vercel (SvelteKit frontend) | $0 (free tier) |
-| **Total** | **~$5/month** |
+| **Total** | **$0/month** |
 
 R2's free egress is the key cost driver here. Serving video through any other cloud storage provider (S3, GCS) would add significant bandwidth costs at scale.
 
