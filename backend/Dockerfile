@@ -14,7 +14,7 @@ COPY src ./src
 RUN touch src/main.rs && cargo build --release
 
 # -- Runtime stage -------
-FROM debigan:bookworm-slim
+FROM debian:bookworm-slim
 
 RUN apt-get update & apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 

@@ -120,7 +120,7 @@ Consistent playback regardless of file size is achieved via HTTP Range Requests:
 
 | Component | Monthly cost |
 |---|---|
-| Cloudflare R2 storage (10GB) | ~$0.15 |
+| Cloudflare R2 storage (10GB) | **$0** (free) |
 | Cloudflare R2 egress | **$0** (free) |
 | Fly.io API (1 shared CPU, 256MB, auto-stop) | ~$1.94 |
 | Fly.io Postgres (shared) | ~$3.00 |
