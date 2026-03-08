@@ -1,0 +1,22 @@
+# Dependencies
+frontend/node_modules/
+
+# SvelteKit generated files (re-created by npm run dev)
+frontend/.svelte-kit/
+
+# Environment files (contain secrets)
+.env
+.env.*
+!.env.example
+
+# Build output
+frontend/build/
+frontend/dist/
+frontend/.env
+
+# OS files
+.DS_Store
+
+# Editor
+.vscode/
+.idea/

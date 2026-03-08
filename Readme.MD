@@ -26,6 +26,7 @@ streamvault/
 │
 ├── frontend/         # SvelteKit app
 │   ├── src/
+│   │   ├── app.html                             # Root HTML shell (required by SvelteKit)
 │   │   ├── app.css                              # Global styles
 │   │   ├── lib/
 │   │   │   └── api.ts                           # API client
@@ -101,37 +102,111 @@ You do not need to install Svelte or SvelteKit separately. They are listed as de
 
 ## Local Development
 
-### Backend
+### Step 1 — Start Postgres
+
+From the project root:
+
 ```bash
-cd backend
-cp .env.example .env   # fill in your values
-cargo run
-# API running at http://localhost:8080
+docker compose up -d
 ```
 
-### Frontend
+This starts a Postgres 16 container at `localhost:5432` with database `streamvault`. To stop it:
+
 ```bash
-cd frontend
-cp .env.example .env.local
-npm install
-npm run dev
-# App running at http://localhost:5173
+docker compose down
 ```
 
-### R2 CORS Configuration
+To stop and wipe all data:
 
-In your Cloudflare R2 bucket settings, add this CORS rule to allow browser uploads:
+```bash
+docker compose down -v
+```
+
+---
+
+### Step 2 — Configure R2 CORS
+
+Before the browser can upload directly to your R2 bucket, you need to allow it. In the Cloudflare Dashboard go to **R2 → your bucket → Settings → CORS Policy** and add:
 
 ```json
 [
   {
-    "AllowedOrigins": ["http://localhost:5173", "https://your-vercel-app.vercel.app"],
+    "AllowedOrigins": ["http://localhost:5173"],
     "AllowedMethods": ["PUT", "GET"],
     "AllowedHeaders": ["*"],
     "MaxAgeSeconds": 3600
   }
 ]
 ```
+
+When you deploy to Vercel later, add your Vercel URL to `AllowedOrigins` alongside localhost.
+
+---
+
+### Step 3 — Configure Backend
+
+```bash
+# from the project root
+cd backend
+cp .env.example .env
+```
+
+Open `.env` and fill in your real Cloudflare R2 credentials:
+
+```bash
+# These come from Cloudflare Dashboard → R2 → Manage R2 API Tokens
+R2_ACCOUNT_ID=your_cloudflare_account_id
+R2_ACCESS_KEY_ID=your_r2_access_key_id
+R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
+R2_BUCKET=streamvault-videos
+```
+
+The `DATABASE_URL` in `.env.example` already matches the Docker Compose Postgres — no change needed there.
+
+---
+
+### Step 4 — Run the Backend
+
+```bash
+# still inside /backend
+cargo run
+```
+
+On first run, Cargo downloads and compiles all dependencies — this takes a few minutes. Subsequent runs are fast. The server starts at `http://localhost:8080` and automatically creates the `videos` table in Postgres on boot.
+
+Verify it's running:
+
+```bash
+curl http://localhost:8080/api/health
+# {"status":"ok"}
+```
+
+---
+
+### Step 5 — Run the Frontend
+
+Open a new terminal tab:
+
+```bash
+# from the project root
+cd frontend
+cp .env.example .env.local
+npm install
+npm run dev
+```
+
+App is now running at `http://localhost:5173`. Open it in your browser and you should see the upload page.
+
+---
+
+### Full Local Stack
+
+| Service | URL |
+|---|---|
+| SvelteKit frontend | http://localhost:5173 |
+| Rust API | http://localhost:8080 |
+| Postgres | localhost:5432 |
+| Video storage | Cloudflare R2 (real) |
 
 ## Deployment
 

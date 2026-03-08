@@ -1,31 +1,32 @@
 <script lang="ts">
     import { initUpload, uploadToR2, completeUpload } from "$lib/api";
 
-    type UploadState = 'idle' | 'uploading' | 'completing' | 'done' | 'error';
+    type UploadState = "idle" | "uploading" | "completing" | "done" | "error";
 
-    let state: UploadState = 'idle';
-    let progress 0;
-    let watchUrl = '';
-    let videoId = '';
-    let errorMessage = '';
+    let state: UploadState = "idle";
+    let progress = 0;
+    let watchUrl = "";
+    let videoId = "";
+    let errorMessage = "";
     let isDragging = false;
 
     const ACCEPTED = [
-        'video/mp4',
-        'video/webm',
-        'video/ogg',
-        'video/quicktime'
+        "video/mp4",
+        "video/webm",
+        "video/ogg",
+        "video/quicktime",
     ];
     const MAX_SIZE = 1024 * 1024 * 1024; // 1GB
 
     function formatSize(bytes: number): string {
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-        if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-        return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
+        if (bytes < 1024 * 1024 * 1024)
+            return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+        return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
     }
 
     async function handleFile(file: File) {
-        errorMessage = '';
+        errorMessage = "";
 
         if (!ACCEPTED.includes(file.type)) {
             errorMessage = `Unsupported format. Use MP4, WebM, OGG, or MOV.`;
@@ -36,7 +37,7 @@
             return;
         }
 
-        state = 'uploading';
+        state = "uploading";
         progress = 0;
 
         try {
@@ -50,14 +51,14 @@
             });
 
             // Step 3: Tell backend upload is done
-            state = 'completing';
+            state = "completing";
             const complete = await completeUpload(videoId);
             watchUrl = `${window.location.origin}/watch/${videoId}`;
 
-            state = 'done'
+            state = "done";
         } catch (err: any) {
-            errorMessage = err.message ?? 'Upload failed. Please try again.';
-            state = 'error';
+            errorMessage = err.message ?? "Upload failed. Please try again.";
+            state = "error";
         }
     }
 
@@ -79,11 +80,11 @@
     }
 
     function reset() {
-        state = 'idle';
+        state = "idle";
         progress = 0;
-        watchUrl = '';
-        videoId = '';
-        errorMessage = '';
+        watchUrl = "";
+        videoId = "";
+        errorMessage = "";
     }
 
     async function copyLink() {

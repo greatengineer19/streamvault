@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { getStreamUrl, type StreamUrlResponse } from "$lib/api";
-    import type { PageData } from "/$types";
+    import type { PageData } from "./$types";
 
     export let data: PageData;
 
