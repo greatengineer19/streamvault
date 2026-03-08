@@ -20,15 +20,15 @@ impl Config {
         Ok(Self {
             database_url: required("DATABASE_URL")?,
             port: std::env::var("PORT")
-                    .unwrap_or_else(|_| "8079".into())
-                    .parse()
-                    .context("PORT must be a number")?,
+                .unwrap_or_else(|_| "8079".into())
+                .parse()
+                .context("PORT must be a number")?,
             r2_account_id: required("R2_ACCOUNT_ID")?,
             r2_access_key_id: required("R2_ACCESS_KEY_ID")?,
             r2_secret_access_key: required("R2_SECRET_ACCESS_KEY")?,
             r2_bucket: required("R2_BUCKET")?,
             public_url: std::env::var("PUBLIC_URL")
-                        .unwrap_or_else(|_| "http://localhost:8079".into()),
+                .unwrap_or_else(|_| "http://localhost:8079".into()),
         })
     }
 
@@ -43,4 +43,3 @@ impl Config {
 fn required(key: &str) -> anyhow::Result<String> {
     std::env::var(key).with_context(|| format!("Missing required env var: {key}"))
 }
-
