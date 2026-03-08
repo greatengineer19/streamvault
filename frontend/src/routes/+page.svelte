@@ -45,7 +45,7 @@
             const init = await initUpload(file.name, file.size, file.type);
             videoId = init.video_id;
 
-            // Step 2: Upload directly to R2 - server never sees the bytes
+            // Step 2: Upload directly to R2 — server never sees the bytes
             await uploadToR2(init.upload_url, file, (pct) => {
                 progress = pct;
             });
@@ -64,6 +64,7 @@
 
     function handleDrop(e: DragEvent) {
         e.preventDefault();
+        isDragging = false;
         const file = e.dataTransfer?.files[0];
         if (file) handleFile(file);
     }
@@ -97,7 +98,7 @@
 </script>
 
 <svelte:head>
-    <title>StreamVault - Upload</title>
+    <title>StreamVault — Upload</title>
 </svelte:head>
 
 <main>
@@ -113,7 +114,7 @@
 
     <section class="upload-area">
         {#if state === "idle" || state === "error"}
-            <!-- Drop Zone-->
+            <!-- Drop zone -->
             <label
                 class="dropzone"
                 class:dragging={isDragging}
@@ -123,7 +124,7 @@
             >
                 <input
                     type="file"
-                    accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.ogg,.mov"
+                    accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.ogg,.mov"
                     on:change={handleInput}
                     hidden
                 />
@@ -151,13 +152,12 @@
                             />
                         </svg>
                     </div>
-                    <p class="dropzone-primary">Drop your video here</p>
-                    <p class="drop-secondary">or click to browse</p>
+                    <p class="drop-primary">Tap to select a video</p>
+                    <p class="drop-secondary">or drag and drop</p>
                     <div class="formats">
-                        <span>MP4</span>
-                        <span>WebM</span>
-                        <span>MOV</span>
-                        <span>OGG</span>
+                        <span>MP4</span><span>WebM</span><span>MOV</span><span
+                            >OGG</span
+                        >
                     </div>
                     <p class="size-limit">
                         Up to 1 GB · Anonymous · No account needed
@@ -171,8 +171,8 @@
                     {errorMessage}
                 </div>
             {/if}
-        {:else if state == "uploading"}
-            <!-- Progress  -->
+        {:else if state === "uploading"}
+            <!-- Progress -->
             <div class="progress-panel">
                 <div class="progress-header">
                     <span class="progress-label">UPLOADING</span>
@@ -182,7 +182,7 @@
                     <div class="progress-fill" style="width: {progress}%"></div>
                 </div>
                 <p class="progress-sub">
-                    Sending directly to storage - no server in the way
+                    Sending directly to storage — no server in the way
                 </p>
             </div>
         {:else if state === "completing"}
@@ -238,8 +238,8 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 2rem;
-        gap: 3rem;
+        padding: 1.5rem 1rem;
+        gap: 2rem;
         position: relative;
     }
 
@@ -280,7 +280,7 @@
 
     .logo-text {
         font-family: var(--sans);
-        font-size: 1.75rem;
+        font-size: 1.5rem;
         font-weight: 800;
         letter-spacing: 0.15em;
     }
@@ -291,7 +291,7 @@
 
     .tagline {
         font-family: var(--mono);
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         color: var(--text-muted);
         letter-spacing: 0.1em;
         text-transform: uppercase;
@@ -317,6 +317,8 @@
             background 0.15s;
         position: relative;
         overflow: hidden;
+        /* Larger tap target on mobile */
+        -webkit-tap-highlight-color: transparent;
     }
 
     .dropzone::before {
@@ -338,7 +340,7 @@
     }
 
     .dropzone-inner {
-        padding: 3rem 2rem;
+        padding: 2rem 1.5rem;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -373,6 +375,8 @@
         display: flex;
         gap: 0.5rem;
         margin-top: 0.75rem;
+        flex-wrap: wrap;
+        justify-content: center;
     }
 
     .formats span {
@@ -418,7 +422,7 @@
 
     /* Progress */
     .progress-panel {
-        padding: 2.5rem 2rem;
+        padding: 2rem 1.5rem;
         border: 1.5px solid var(--border);
         background: var(--surface);
         display: flex;
@@ -495,7 +499,7 @@
 
     /* Success */
     .success-panel {
-        padding: 2.5rem 2rem;
+        padding: 2rem 1.5rem;
         border: 1.5px solid var(--accent);
         background: var(--surface);
         display: flex;
@@ -559,6 +563,8 @@
             color 0.15s;
         flex-shrink: 0;
         font-family: var(--mono);
+        /* Minimum tap target */
+        min-height: 44px;
     }
 
     .copy-btn:hover {
@@ -571,6 +577,8 @@
         gap: 0.75rem;
         width: 100%;
         margin-top: 0.5rem;
+        /* Stack vertically on very small screens */
+        flex-wrap: wrap;
     }
 
     .watch-btn {
@@ -587,6 +595,8 @@
         font-weight: 700;
         letter-spacing: 0.05em;
         transition: opacity 0.15s;
+        /* Minimum tap target */
+        min-height: 44px;
     }
 
     .watch-btn:hover {
@@ -604,6 +614,8 @@
             border-color 0.15s,
             color 0.15s;
         font-family: var(--mono);
+        /* Minimum tap target */
+        min-height: 44px;
     }
 
     .upload-another:hover {
@@ -618,5 +630,46 @@
         color: var(--text-muted);
         letter-spacing: 0.05em;
         text-align: center;
+    }
+
+    /* ── Mobile breakpoint ───────────────────────────────────────────────────── */
+    @media (max-width: 480px) {
+        main {
+            padding: 1.25rem 0.875rem;
+            gap: 1.5rem;
+            justify-content: flex-start;
+            padding-top: 2rem;
+        }
+
+        .logo-text {
+            font-size: 1.25rem;
+        }
+
+        .dropzone-inner {
+            padding: 1.75rem 1rem;
+        }
+
+        .drop-primary {
+            font-size: 1rem;
+        }
+
+        /* On mobile there is no drag and drop — change the label */
+        .drop-secondary {
+            display: none;
+        }
+
+        .action-row {
+            flex-direction: column;
+        }
+
+        .watch-btn,
+        .upload-another {
+            width: 100%;
+            min-height: 48px;
+        }
+
+        .success-title {
+            font-size: 1.25rem;
+        }
     }
 </style>

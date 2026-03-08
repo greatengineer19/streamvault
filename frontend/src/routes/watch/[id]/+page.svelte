@@ -28,9 +28,7 @@
 </script>
 
 <svelte:head>
-    <title>
-        {streamData?.filename ?? "StreamVault"}
-    </title>
+    <title>{streamData?.filename ?? "StreamVault"}</title>
 </svelte:head>
 
 <div class="page">
@@ -87,7 +85,7 @@
                     {/if}
                 </div>
                 <div class="meta-right">
-                    <a href="/" class="upload-link"> Upload another → </a>
+                    <a href="/" class="upload-link">Upload another →</a>
                 </div>
             </div>
         {/if}
@@ -107,7 +105,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 1.25rem 2rem;
+        padding: 1rem 1.25rem;
         border-bottom: 1px solid var(--border);
     }
 
@@ -150,6 +148,7 @@
         transition:
             border-color 0.15s,
             color 0.15s;
+        min-height: 44px;
     }
 
     .share-btn:hover {
@@ -164,8 +163,8 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 2rem;
-        gap: 1.5rem;
+        padding: 1.5rem 1rem;
+        gap: 1.25rem;
     }
 
     /* States */
@@ -174,7 +173,7 @@
         flex-direction: column;
         align-items: center;
         gap: 1rem;
-        padding: 3rem;
+        padding: 2rem 1rem;
     }
 
     .loading-ring {
@@ -211,6 +210,7 @@
         font-family: var(--mono);
         font-size: 0.85rem;
         color: var(--text-muted);
+        text-align: center;
     }
 
     .home-link {
@@ -218,6 +218,9 @@
         font-size: 0.8rem;
         color: var(--accent);
         margin-top: 0.5rem;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
     }
 
     /* Player */
@@ -231,7 +234,8 @@
 
     .player {
         width: 100%;
-        max-height: 70vh;
+        /* On mobile use more screen height for the video */
+        max-height: 60vh;
         display: block;
         background: #000;
         outline: none;
@@ -244,6 +248,8 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
     }
 
     .meta-left {
@@ -277,9 +283,44 @@
         color: var(--text-muted);
         transition: color 0.15s;
         white-space: nowrap;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
     }
 
     .upload-link:hover {
         color: var(--accent);
+    }
+
+    /* ── Mobile breakpoint ───────────────────────────────────────────────────── */
+    @media (max-width: 480px) {
+        nav {
+            padding: 0.875rem 1rem;
+        }
+
+        .logo-text {
+            font-size: 0.95rem;
+            letter-spacing: 0.1em;
+        }
+
+        main {
+            padding: 1rem 0.875rem;
+            justify-content: flex-start;
+        }
+
+        .player {
+            /* On mobile, use full width and natural aspect ratio */
+            max-height: none;
+        }
+
+        .meta {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .filename {
+            font-size: 0.9rem;
+        }
     }
 </style>
