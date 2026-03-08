@@ -6,7 +6,7 @@ mod r2;
 mod routes;
 
 use axum::{Router, http::Method};
-use tower_http::cors::{CrosLayer, Any};
+use tower_http::cors::{CorsLayer, Any};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 

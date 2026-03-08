@@ -1,3 +1,4 @@
+use aws_config::BehaviorVersion;
 use aws_config::Region;
 use aws_credential_types::Credentials;
 use aws_sdk_s3::{
@@ -19,7 +20,9 @@ pub async fn build_client(config: &Config) -> Client {
     );
 
     let s3_config = Builder::new()
+        .behavior_version(BehaviorVersion::latest())
         .endpoint_url(config.r2_endpoint())
+        .credentials_provider(credentials)
         .region(Region::new("auto"))
         .force_path_style(true)
         .build();

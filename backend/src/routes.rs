@@ -13,7 +13,7 @@ use crate::{
     error::AppError,
     models::{Video, VideoResponse},
     r2
-}
+};
 
 // - Shared state injected into every handler -----------------
 
@@ -57,7 +57,7 @@ async fn upload_init(
     // Validate mime type - only browser-native formats
     let allowed = ["video/mp4", "video/webm", "video/ogg", "video/quicktime"];
     if let Some(ref mime) = body.mime_type {
-        if !allowed.contains(&mine.as_str()) {
+        if !allowed.contains(&mime.as_str()) {
             return Err(AppError::BadRequest(format!(
                 "Unsupported format '{mime}'. Please upload MP4, WebM, OGG, or MOV."
             )));

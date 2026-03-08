@@ -20,6 +20,6 @@ RUN apt-get update & apt-get install -y ca-certificates && rm -rf /var/lib/apt/l
 
 COPY --from=builder /app/target/release/streamvault-api /usr/local/bin/streamvault-api
 
-EXPOSE 8080
+EXPOSE 8079
 
 CMD ["streamvault-api"]
