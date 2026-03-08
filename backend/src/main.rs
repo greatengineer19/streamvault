@@ -4,8 +4,12 @@ mod error;
 mod models;
 mod r2;
 mod routes;
+mod tests;
 
-use axum::{Router, http::{Method, HeaderValue}};
+use axum::{
+    Router,
+    http::{HeaderValue, Method},
+};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -18,7 +22,8 @@ async fn main() -> anyhow::Result<()> {
     // Init tracing
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "streamvault_api=debug,tower_http=debug".into()),
+            std::env::var("RUST_LOG")
+                .unwrap_or_else(|_| "streamvault_api=debug,tower_http=debug".into()),
         ))
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -45,12 +50,17 @@ async fn main() -> anyhow::Result<()> {
     // CORS — only allow explicitly listed origins
     // Set ALLOWED_ORIGINS in Railway as comma-separated URLs:
     // e.g. "http://localhost:5173,https://streamvault-lilac.vercel.app"
-    let allowed_origins = std::env::var("ALLOWED_ORIGINS")
-        .unwrap_or_else(|_| "http://localhost:5173".into());
+    let allowed_origins =
+        std::env::var("ALLOWED_ORIGINS").unwrap_or_else(|_| "http://localhost:5173".into());
 
     let origins: Vec<HeaderValue> = allowed_origins
         .split(',')
-        .map(|o| o.trim().parse::<HeaderValue>().expect("Invalid origin"))
+        .map(|origin| {
+            origin
+                .trim()
+                .parse::<HeaderValue>()
+                .expect("Invalid origin")
+        })
         .collect();
 
     let cors = CorsLayer::new()

@@ -1,10 +1,12 @@
+backend/target/
+backend/.env
+!backend/.env.example
+
 # Dependencies
 frontend/node_modules/
 
 # SvelteKit generated files (re-created by npm run dev)
 frontend/.svelte-kit/
-backend/target/
-backend/.env
 
 # Environment files (contain secrets)
 .env
@@ -15,6 +17,7 @@ backend/.env
 frontend/build/
 frontend/dist/
 frontend/.env
+!frontend/.env.example
 
 # OS files
 .DS_Store
@@ -22,3 +25,5 @@ frontend/.env
 # Editor
 .vscode/
 .idea/
+
+pv_readme.MD

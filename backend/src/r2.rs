@@ -1,11 +1,7 @@
 use aws_config::BehaviorVersion;
 use aws_config::Region;
 use aws_credential_types::Credentials;
-use aws_sdk_s3::{
-    config::Builder,
-    presigning::PresigningConfig,
-    Client,
-};
+use aws_sdk_s3::{Client, config::Builder, presigning::PresigningConfig};
 use std::time::Duration;
 
 use crate::config::Config;
@@ -35,10 +31,10 @@ pub async fn presigned_put_url(
     client: &Client,
     bucket: &str,
     key: &str,
-    expires_in_secs: u64
+    expires_in_secs: u64,
 ) -> Result<String, String> {
     let presigning = PresigningConfig::expires_in(Duration::from_secs(expires_in_secs))
-                        .map_err( |e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
 
     let presigned = client
         .put_object()
@@ -46,7 +42,7 @@ pub async fn presigned_put_url(
         .key(key)
         .presigned(presigning)
         .await
-        .map_err( |e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
 
     Ok(presigned.uri().to_string())
 }
@@ -59,7 +55,7 @@ pub async fn presigned_get_url(
     expires_in_secs: u64,
 ) -> Result<String, String> {
     let presigning = PresigningConfig::expires_in(Duration::from_secs(expires_in_secs))
-                        .map_err( |e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
 
     let presigned = client
         .get_object()
@@ -67,7 +63,7 @@ pub async fn presigned_get_url(
         .key(key)
         .presigned(presigning)
         .await
-        .map_err( |e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
 
     Ok(presigned.uri().to_string())
 }

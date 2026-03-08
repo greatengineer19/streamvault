@@ -1,18 +1,18 @@
+use aws_sdk_s3::Client as S3Client;
 use axum::{
+    Json, Router,
     extract::{Path, State},
     routing::{get, post},
-    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
-use aws_sdk_s3::Client as S3Client;
 
 use crate::{
     config::Config,
     error::AppError,
     models::{Video, VideoResponse},
-    r2
+    r2,
 };
 
 // - Shared state injected into every handler -----------------
@@ -56,21 +56,17 @@ async fn upload_init(
 ) -> Result<Json<UploadInitResponse>, AppError> {
     // Validate mime type - only browser-native formats
     let allowed = ["video/mp4", "video/webm", "video/ogg", "video/quicktime"];
-    if let Some(ref mime) = body.mime_type {
-        if !allowed.contains(&mime.as_str()) {
-            return Err(AppError::BadRequest(format!(
-                "Unsupported format '{mime}'. Please upload MP4, WebM, OGG, or MOV."
-            )));
-        }
+    if let Some(ref mime) = body.mime_type && !allowed.contains(&mime.as_str()) {
+        return Err(AppError::BadRequest(format!(
+            "Unsupported format '{mime}'. Please upload MP4, WebM, OGG, or MOV."
+        )));
     }
 
     // Validate size
     if let Some(size) = body.size_bytes {
         let max: i64 = 1024 * 1024 * 1024; // 1GB
         if size > max {
-            return Err(AppError::BadRequest(
-                "File exceeds 1GB limit.".into(),
-            ));
+            return Err(AppError::BadRequest("File exceeds 1GB limit.".into()));
         }
     }
 
@@ -91,18 +87,14 @@ async fn upload_init(
     .await?;
 
     // Generate presigned PUT URL (valid for 1 hour)
-    let upload_url = r2::presigned_put_url(
-        &state.r2_client,
-        &state.config.r2_bucket,
-        &r2_key,
-        3600,
-    )
-    .await
-    .map_err(AppError::R2)?;
+    let upload_url =
+        r2::presigned_put_url(&state.r2_client, &state.config.r2_bucket, &r2_key, 3600)
+            .await
+            .map_err(AppError::R2)?;
 
     Ok(Json(UploadInitResponse {
         video_id,
-        upload_url
+        upload_url,
     }))
 }
 
@@ -119,7 +111,7 @@ async fn upload_complete(
 ) -> Result<Json<UploadCompleteResponse>, AppError> {
     let rows_affected = sqlx::query(
         "UPDATE videos SET status = 'ready'
-         WHERE id = $1 AND status = 'pending'"
+         WHERE id = $1 AND status = 'pending'",
     )
     .bind(video_id)
     .execute(&state.pool)
@@ -143,13 +135,11 @@ async fn get_video(
     State(state): State<AppState>,
     Path(video_id): Path<Uuid>,
 ) -> Result<Json<VideoResponse>, AppError> {
-    let video = sqlx::query_as::<_, Video>(
-        "SELECT * FROM videos WHERE id = $1",
-    )
-    .bind(video_id)
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AppError::NotFound)?;
+    let video = sqlx::query_as::<_, Video>("SELECT * FROM videos WHERE id = $1")
+        .bind(video_id)
+        .fetch_optional(&state.pool)
+        .await?
+        .ok_or(AppError::NotFound)?;
 
     Ok(Json(video.into()))
 }
@@ -159,7 +149,7 @@ async fn get_video(
 pub struct StreamUrlResponse {
     pub stream_url: String, // presigned GET URL -> browser streams directly from R2
     pub mime_type: Option<String>,
-    pub filename: String
+    pub filename: String,
 }
 
 async fn get_stream_url(
@@ -168,7 +158,7 @@ async fn get_stream_url(
 ) -> Result<Json<StreamUrlResponse>, AppError> {
     let video = sqlx::query_as::<_, Video>(
         "SELECT * FROM videos
-         WHERE id = $1 AND status = 'ready'"
+         WHERE id = $1 AND status = 'ready'",
     )
     .bind(video_id)
     .fetch_optional(&state.pool)

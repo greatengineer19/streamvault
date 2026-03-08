@@ -20,6 +20,7 @@ streamvault/
 │   │   ├── db.rs     # Postgres connection + migrations
 │   │   ├── r2.rs     # Cloudflare R2 / presigned URLs
 │   │   └── error.rs  # Unified error handling
+│   │   └── tests.rs  # Unified error handling
 │   ├── Dockerfile
 │   ├── fly.toml
 │   └── .env.example
@@ -211,3 +212,78 @@ App is now running at `http://localhost:5173`. Open it in your browser and you s
 ## Deployment
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for full deployment instructions.
+
+---
+
+## Code Quality
+
+### Formatting with `cargo fmt`
+
+Rust has an official formatter built in. It enforces a consistent style across all `.rs` files automatically — same idea as Prettier in JavaScript.
+
+```bash
+cd backend
+
+# Format all files in place
+cargo fmt
+
+# Check formatting without changing files (useful in CI)
+cargo fmt -- --check
+```
+
+Run `cargo fmt` before committing. If `cargo fmt -- --check` exits with no output, your formatting is clean.
+
+---
+
+### Linting with `cargo clippy`
+
+Clippy is Rust's linter. It catches code smells and suggests more idiomatic patterns.
+
+```bash
+cd backend
+cargo clippy
+```
+
+A clean submission has zero warnings from Clippy.
+
+---
+
+### Running Tests
+
+Tests live in `backend/src/tests.rs` and are registered in `main.rs` via `mod tests`.
+
+```bash
+cd backend
+cargo test
+```
+
+Expected output:
+
+```
+running 12 tests
+test upload_validation::accepts_mp4 ... ok
+test upload_validation::accepts_webm ... ok
+test upload_validation::accepts_ogg ... ok
+test upload_validation::accepts_quicktime_mov ... ok
+test upload_validation::rejects_mkv ... ok
+test upload_validation::rejects_avi ... ok
+test upload_validation::rejects_non_video_type ... ok
+test upload_validation::rejects_empty_mime ... ok
+test upload_validation::accepts_small_file ... ok
+test upload_validation::accepts_exactly_1gb ... ok
+test upload_validation::rejects_file_over_1gb ... ok
+test upload_validation::rejects_2gb_file ... ok
+
+test result: ok. 12 passed; 0 failed
+```
+
+---
+
+### Full quality check (run before submitting)
+
+```bash
+cd backend
+cargo fmt -- --check  # formatting clean
+cargo clippy          # no warnings
+cargo test            # all tests pass
+```

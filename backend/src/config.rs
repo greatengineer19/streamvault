@@ -33,10 +33,7 @@ impl Config {
     }
 
     pub fn r2_endpoint(&self) -> String {
-        format!(
-            "https://{}.r2.cloudflarestorage.com",
-            self.r2_account_id
-        )
+        format!("https://{}.r2.cloudflarestorage.com", self.r2_account_id)
     }
 }
 

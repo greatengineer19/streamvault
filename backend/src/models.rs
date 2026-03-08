@@ -30,7 +30,7 @@ impl From<Video> for VideoResponse {
             filename: v.filename,
             mime_type: v.mime_type,
             status: v.status,
-            created_at: v.created_at
+            created_at: v.created_at,
         }
     }
 }
