@@ -1,133 +1,125 @@
 # StreamVault
 
-Minimal private video streaming service. Upload once, stream instantly.
+> Minimal private video streaming service — upload once, stream instantly.
 
-- **Backend**: Rust + Axum → Fly.io
-- **Frontend**: Svelte + SvelteKit → Vercel
-- **Storage**: Cloudflare R2
-- **Database**: PostgreSQL (Fly.io)
+Upload a video file (up to 1GB) and get a shareable link. No accounts required. The browser uploads directly to Cloudflare R2; the API server never touches video bytes.
+
+**Live demo:** https://streamvault-lilac.vercel.app
+
+---
+
+## Stack
+
+| Layer | Technology | Hosted on |
+|---|---|---|
+| Frontend | SvelteKit | Vercel (free) |
+| Backend API | Rust + Axum | Railway (free trial) |
+| Video Storage | Cloudflare R2 | Cloudflare (free egress) |
+| Database | PostgreSQL | Neon (free tier) |
+
+---
 
 ## Project Structure
 
 ```
 streamvault/
-├── backend/          # Rust/Axum API
+├── backend/               # Rust/Axum API
 │   ├── src/
-│   │   ├── main.rs   # Server entry, router setup
-│   │   ├── config.rs # Env var loading
-│   │   ├── routes.rs # All HTTP handlers
-│   │   ├── models.rs # Shared data types
-│   │   ├── db.rs     # Postgres connection + migrations
-│   │   ├── r2.rs     # Cloudflare R2 / presigned URLs
-│   │   └── error.rs  # Unified error handling
-│   │   └── tests.rs  # Unified error handling
+│   │   ├── main.rs        # Server entry, router setup
+│   │   ├── config.rs      # Env var loading
+│   │   ├── routes.rs      # HTTP handlers
+│   │   ├── models.rs      # Shared data types
+│   │   ├── db.rs          # Postgres connection + migrations
+│   │   ├── r2.rs          # Cloudflare R2 / presigned URLs
+│   │   ├── error.rs       # Unified error handling
+│   │   └── tests.rs       # Unit tests
 │   ├── Dockerfile
 │   ├── fly.toml
 │   └── .env.example
 │
-├── frontend/         # SvelteKit app
+├── frontend/              # SvelteKit app
 │   ├── src/
-│   │   ├── app.html                             # Root HTML shell (required by SvelteKit)
-│   │   ├── app.css                              # Global styles
+│   │   ├── app.html
+│   │   ├── app.css
 │   │   ├── lib/
-│   │   │   └── api.ts                           # API client
+│   │   │   └── api.ts     # API client
 │   │   └── routes/
-│   │       ├── +layout.svelte                   # Root layout
-│   │       ├── +page.svelte                     # Upload page (/)
-│   │       └── watch/
-│   │           └── [id]/
-│   │               ├── +page.ts                 # Load function
-│   │               └── +page.svelte             # Watch page (/watch/:id)
+│   │       ├── +layout.svelte
+│   │       ├── +page.svelte          # Upload page (/)
+│   │       └── watch/[id]/
+│   │           ├── +page.ts          # Load function
+│   │           └── +page.svelte      # Watch page (/watch/:id)
 │   ├── svelte.config.js
 │   ├── vite.config.ts
 │   ├── package.json
 │   └── .env.example
 │
-└── ARCHITECTURE.md   # Design decisions
+├── docker-compose.yml     # Local Postgres
+├── ARCHITECTURE.md        # Design decisions
+└── README.md
 ```
-
-## Prerequisites
-
-### Installing Rust
-
-Rust is installed via `rustup` — the official Rust toolchain manager. It installs the compiler (`rustc`), the package manager (`cargo`), and keeps everything up to date.
-
-**macOS / Linux:**
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-Follow the on-screen prompt — the default installation is fine. Then restart your terminal (or run `source $HOME/.cargo/env`) so the `cargo` command is available.
-
-**Windows:**
-
-Download and run the installer from https://rustup.rs. It will also prompt you to install the Visual Studio C++ build tools if you don't have them — accept that too.
-
-**Verify it worked:**
-```bash
-rustc --version   # e.g. rustc 1.78.0
-cargo --version   # e.g. cargo 1.78.0
-```
-
-You do not need to install Axum separately. Axum is a library (called a "crate" in Rust), and `cargo` downloads it automatically when you run `cargo build` or `cargo run` based on the versions listed in `Cargo.toml`.
 
 ---
 
-### Installing Node.js (for SvelteKit)
+## Prerequisites
 
-SvelteKit requires Node.js 18 or higher. The recommended way is via `nvm` (Node Version Manager), which lets you switch Node versions easily.
+### Rust
 
-**macOS / Linux:**
 ```bash
-# Install nvm
+# macOS / Linux
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+```
+
+Windows: download the installer from [rustup.rs](https://rustup.rs).
+
+```bash
+rustc --version && cargo --version  # verify
+```
+
+### Node.js (v18+)
+
+```bash
+# macOS / Linux — via nvm (recommended)
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-
-# Restart terminal, then install Node 20 LTS
-nvm install 20
-nvm use 20
+nvm install 20 && nvm use 20
 ```
 
-**Windows:**
+Windows: download the LTS installer from [nodejs.org](https://nodejs.org).
 
-Download and run the LTS installer from https://nodejs.org. This also installs `npm` automatically.
-
-**Verify it worked:**
 ```bash
-node --version   # e.g. v20.12.0
-npm --version    # e.g. 10.5.0
+node --version && npm --version  # verify
 ```
-
-You do not need to install Svelte or SvelteKit separately. They are listed as dependencies in `frontend/package.json` and are downloaded automatically when you run `npm install`. The `svelte.config.js` in this project already configures SvelteKit with the Vercel adapter.
 
 ---
 
 ## Local Development
 
-### Step 1 — Start Postgres
+### 1. Clone
 
-From the project root:
+```bash
+git clone https://github.com/your-org/streamvault.git
+cd streamvault
+```
+
+### 2. Start PostgreSQL
 
 ```bash
 docker compose up -d
 ```
 
-This starts a Postgres 16 container at `localhost:5432` with database `streamvault`. To stop it:
+Starts Postgres 16 at `localhost:5432`. The backend auto-creates the schema on first boot.
 
 ```bash
-docker compose down
+docker compose down      # stop
+docker compose down -v   # stop + wipe data
 ```
 
-To stop and wipe all data:
+### 3. Set up Cloudflare R2
 
-```bash
-docker compose down -v
-```
-
----
-
-### Step 2 — Configure R2 CORS
-
-Before the browser can upload directly to your R2 bucket, you need to allow it. In the Cloudflare Dashboard go to **R2 → your bucket → Settings → CORS Policy** and add:
+1. Create a bucket named `streamvault-videos` in the [Cloudflare Dashboard](https://dash.cloudflare.com).
+2. Generate an API token under **R2 → Manage R2 API Tokens** (Object Read & Write).
+3. Set the CORS policy under **R2 → your bucket → Settings → CORS Policy**:
 
 ```json
 [
@@ -140,150 +132,89 @@ Before the browser can upload directly to your R2 bucket, you need to allow it. 
 ]
 ```
 
-When you deploy to Vercel later, add your Vercel URL to `AllowedOrigins` alongside localhost.
+When deploying, add your production frontend URL to `AllowedOrigins`.
 
----
-
-### Step 3 — Configure Backend
+### 4. Configure the backend
 
 ```bash
-# from the project root
 cd backend
 cp .env.example .env
 ```
 
-Open `.env` and fill in your real Cloudflare R2 credentials:
+Fill in your R2 credentials:
 
-```bash
-# These come from Cloudflare Dashboard → R2 → Manage R2 API Tokens
+```env
 R2_ACCOUNT_ID=your_cloudflare_account_id
 R2_ACCESS_KEY_ID=your_r2_access_key_id
 R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
 R2_BUCKET=streamvault-videos
 ```
 
-The `DATABASE_URL` in `.env.example` already matches the Docker Compose Postgres — no change needed there.
+`DATABASE_URL` is pre-configured for the Docker Compose Postgres — no changes needed locally.
 
----
-
-### Step 4 — Run the Backend
+### 5. Start the backend
 
 ```bash
-# still inside /backend
 cargo run
 ```
 
-On first run, Cargo downloads and compiles all dependencies — this takes a few minutes. Subsequent runs are fast. The server starts at `http://localhost:8079` and automatically creates the `videos` table in Postgres on boot.
-
-Verify it's running:
+First run compiles all dependencies (~2–3 minutes). Subsequent runs are fast.
 
 ```bash
-curl http://localhost:8079/api/health
-# {"status":"ok"}
+curl http://localhost:8079/api/health  # → {"status":"ok"}
 ```
 
----
-
-### Step 5 — Run the Frontend
-
-Open a new terminal tab:
+### 6. Start the frontend
 
 ```bash
-# from the project root
 cd frontend
 cp .env.example .env.local
 npm install
 npm run dev
 ```
 
-App is now running at `http://localhost:5173`. Open it in your browser and you should see the upload page.
+Open **http://localhost:5173**.
 
 ---
 
-### Full Local Stack
+## Local Services
 
 | Service | URL |
 |---|---|
-| SvelteKit frontend | http://localhost:5173 |
-| Rust API | http://localhost:8079 |
+| Frontend | http://localhost:5173 |
+| API | http://localhost:8079 |
 | Postgres | localhost:5432 |
-| Video storage | Cloudflare R2 (real) |
+| Video storage | Cloudflare R2 (remote) |
+
+---
 
 ## Deployment
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for full deployment instructions.
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for full deployment instructions (Railway + Vercel + Neon).
 
 ---
 
 ## Code Quality
 
-### Formatting with `cargo fmt`
-
-Rust has an official formatter built in. It enforces a consistent style across all `.rs` files automatically — same idea as Prettier in JavaScript.
-
 ```bash
 cd backend
-
-# Format all files in place
-cargo fmt
-
-# Check formatting without changing files (useful in CI)
-cargo fmt -- --check
-```
-
-Run `cargo fmt` before committing. If `cargo fmt -- --check` exits with no output, your formatting is clean.
-
----
-
-### Linting with `cargo clippy`
-
-Clippy is Rust's linter. It catches code smells and suggests more idiomatic patterns.
-
-```bash
-cd backend
-cargo clippy
-```
-
-A clean submission has zero warnings from Clippy.
-
----
-
-### Running Tests
-
-Tests live in `backend/src/tests.rs` and are registered in `main.rs` via `mod tests`.
-
-```bash
-cd backend
-cargo test
-```
-
-Expected output:
-
-```
-running 12 tests
-test upload_validation::accepts_mp4 ... ok
-test upload_validation::accepts_webm ... ok
-test upload_validation::accepts_ogg ... ok
-test upload_validation::accepts_quicktime_mov ... ok
-test upload_validation::rejects_mkv ... ok
-test upload_validation::rejects_avi ... ok
-test upload_validation::rejects_non_video_type ... ok
-test upload_validation::rejects_empty_mime ... ok
-test upload_validation::accepts_small_file ... ok
-test upload_validation::accepts_exactly_1gb ... ok
-test upload_validation::rejects_file_over_1gb ... ok
-test upload_validation::rejects_2gb_file ... ok
-
-test result: ok. 12 passed; 0 failed
+cargo fmt -- --check   # check formatting
+cargo clippy           # lint
+cargo test             # run tests
 ```
 
 ---
 
-### Full quality check (run before submitting)
+## Packaging
+
+Export the project without build artifacts or secrets:
 
 ```bash
-cd backend
-cargo fmt -- --check  # formatting clean
-cargo clippy          # no warnings
-cargo test            # all tests pass
+zip -r streamvault.zip . \
+  --exclude "*/target/*" \
+  --exclude "*/node_modules/*" \
+  --exclude "*/.env" \
+  --exclude "*/.env.local" \
+  --exclude "*/.svelte-kit/*" \
+  --exclude "*/build/*"
 ```

@@ -1,167 +1,150 @@
 # StreamVault — Architecture & Design Decisions
 
-## Overview
-
-StreamVault is a minimal private video streaming service built for fast time-to-stream, horizontal scalability, and low operational cost. Users upload videos anonymously and receive a shareable link they can send to anyone.
+StreamVault is a minimal private video streaming service built for fast time-to-stream, horizontal scalability, and near-zero operational cost. Users upload videos anonymously and receive a shareable link.
 
 ---
 
-## Stack
-
-| Layer | Technology | Deployed on |
-|---|---|---|
-| Backend API | Rust + Axum | Fly.io |
-| Frontend | Svelte + SvelteKit | Vercel |
-| Video Storage | Cloudflare R2 | Cloudflare |
-| Database | PostgreSQL | Fly.io Managed Postgres |
-
----
-
-## Core Architecture
+## How It Works
 
 ```
 Browser (Vercel)
     │
-    │ 1. POST /api/upload/init  → get presigned PUT URL + video_id
-    │ 2. PUT file directly to R2 (presigned URL, browser → R2, no server touch)
-    │ 3. POST /api/upload/complete/:id  → marks video ready in Postgres
+    ├─ 1. POST /api/upload/init       → presigned PUT URL + video_id
+    ├─ 2. PUT file → Cloudflare R2    (direct, server never sees the bytes)
+    ├─ 3. POST /api/upload/complete   → marks video "ready" in Postgres
     │
     ▼
-Rust/Axum API (Fly.io) ←→ PostgreSQL (Fly.io)
+Rust/Axum API (Railway) ←──→ PostgreSQL (Neon)
     │
-    │ 4. GET /api/video/:id/stream  → returns presigned GET URL
+    ├─ 4. GET /api/video/:id/stream   → presigned GET URL
     │
     ▼
-Cloudflare R2  ←──── Browser streams directly via Range Requests
+Browser streams directly from Cloudflare R2 via HTTP Range Requests
 ```
 
----
-
-## Decision 1: No Transcoding
-
-**The requirement says time-to-stream matters more than quality.**
-
-Transcoding (converting video to HLS/DASH with multiple quality tiers) takes minutes for large files and requires significant server resources. We skip it entirely.
-
-Instead, we accept only browser-native formats (MP4/H.264, WebM, OGG, MOV). The browser's native `<video>` element plays these directly without any server-side processing. Time-to-stream = upload time + ~1 second to mark as ready.
-
-**Trade-off acknowledged**: No adaptive quality switching. Viewers on slow connections may buffer. This is an acceptable trade-off given the explicit requirement priority.
+The core constraint: **the API server never proxies video bytes.** Upload bandwidth goes browser → R2. Streaming bandwidth goes R2 → browser. The backend handles only metadata and URL generation.
 
 ---
 
-## Decision 2: Presigned Direct Upload to R2
+## Requirements Coverage
 
-The browser uploads the video file **directly to Cloudflare R2** using a time-limited presigned PUT URL. Our API server never proxies the video bytes.
+### Core
 
-**Why this matters:**
-- A 1GB file upload does not consume server memory or bandwidth
-- The API server stays lean and horizontally scalable
-- Upload speed is limited only by the user's connection and R2, not our server
+| Requirement | How it's met |
+|---|---|
+| Upload up to 1GB | Enforced at the API layer before presigned URL is issued; R2 single PUT supports up to 5GB |
+| Common video formats | MP4/H.264, WebM, OGG, MOV — all natively playable in browser `<video>` |
+| Anonymous upload | No auth system; UUID is the only access token |
+| Shareable link per video | `/watch/:id` — the UUID in the URL is the share link |
+| Stream via browser | Presigned GET URL returned to `<video src>`, plays natively |
+| Time-to-stream priority | No transcoding; upload → mark ready → stream in ~1 second |
 
-The flow: browser asks our API for a presigned URL → API generates it and stores a `pending` DB record → browser PUTs directly to R2 → browser notifies API → API marks video `ready`.
+### Bonus
 
----
-
-## Decision 3: Presigned GET URLs for Streaming
-
-When a viewer visits `/watch/:id`, SvelteKit calls `/api/video/:id/stream` which returns a **time-limited presigned GET URL** pointing directly to R2. The browser's `<video>` element streams from R2 directly.
-
-**Why not proxy through our server?**
-- R2 has zero egress fees — streaming through our server would add latency and cost
-- R2 natively supports HTTP `Range` requests, which the browser uses automatically for seeking and buffered streaming
-- Our server has zero load from video bytes regardless of how many concurrent viewers there are
-
-Presigned URLs expire after 4 hours — long enough for any viewing session.
+| Requirement | How it's met |
+|---|---|
+| Consistent playback regardless of file size | HTTP Range Requests — browser fetches in chunks, seeking works at any size |
+| Horizontal scaling | Stateless API; all state in Postgres + R2; scale by adding replicas |
+| Cost efficiency | ~$0/month on free tiers; R2 free egress means streaming is always free |
 
 ---
 
-## Decision 4: PostgreSQL on Fly.io
+## Design Decisions
 
-We use Postgres (via SQLx in Rust) for video metadata. The schema is intentionally minimal:
+### No Transcoding
+
+Transcoding to HLS/DASH takes minutes per file and requires substantial server resources. Given that time-to-stream is the primary constraint, we skip it entirely and accept only browser-native formats. Time-to-stream becomes: upload time + ~1 second to mark the video ready.
+
+**Trade-off:** No adaptive quality switching. Viewers on slow connections may buffer. This is acceptable given the stated priority.
+
+### Presigned Direct Upload
+
+The browser receives a time-limited presigned PUT URL from the API and uploads directly to R2. The backend issues the URL, stores a `pending` record in Postgres, and waits for a completion callback — nothing more.
+
+This keeps the backend stateless and eliminates the server as an upload bottleneck. A 1GB upload consumes zero server memory or bandwidth.
+
+### Presigned Streaming
+
+On `/watch/:id`, the frontend calls `/api/video/:id/stream` and receives a presigned GET URL pointing directly to R2. The `<video>` element streams from R2 using HTTP Range Requests — R2 responds with `206 Partial Content` per chunk, enabling seeking at any file size with no server involvement.
+
+Presigned URLs expire after 4 hours, which is sufficient for any viewing session.
+
+### UUID as Access Token
+
+The video's UUID serves as both the primary key and the only access control mechanism. Knowing the UUID is the only requirement to watch. This satisfies anonymous upload with zero auth infrastructure.
+
+### Stateless API
+
+The Rust/Axum server holds no in-memory state. All persistence is in Postgres (metadata) and R2 (video bytes). Horizontal scaling is a replica count change — no sticky sessions, no shared cache, no coordination between instances.
+
+---
+
+## Data Model
 
 ```sql
 videos (
-  id          UUID PRIMARY KEY,   -- also the access token / shareable ID
+  id          UUID PRIMARY KEY,   -- also the share token
   filename    TEXT,
   size_bytes  BIGINT,
   mime_type   TEXT,
-  r2_key      TEXT,               -- path within R2 bucket
+  r2_key      TEXT,               -- object path within the R2 bucket
   status      TEXT,               -- 'pending' | 'ready'
   created_at  TIMESTAMPTZ
 )
 ```
 
-The UUID serves as the only access control mechanism — knowing the UUID is the only requirement to watch a video. This satisfies the "anonymous upload" requirement without any auth system.
+Only metadata is stored — never video bytes.
 
 ---
 
-## Decision 5: Stateless API for Horizontal Scaling
+## Cost (Light Usage)
 
-The Rust API server holds **no state**. All persistent state lives in Postgres (metadata) and R2 (video bytes). This means:
+| Service | Plan | Cost |
+|---|---|---|
+| Vercel | Free tier | $0 |
+| Railway | Trial (2 vCPU, 1GB) | $0 |
+| Cloudflare R2 | Free tier + free egress | $0 |
+| Neon | Free tier (0.5GB, 100 compute hrs) | $0 |
+| **Total** | | **$0–5 / month** |
 
-- Any number of Fly.io instances can run simultaneously
-- No sticky sessions, no shared memory, no distributed cache needed
-- Scaling is `fly scale count N` — that's it
-
----
-
-## Playback Performance
-
-Consistent playback regardless of file size is achieved via HTTP Range Requests:
-
-- The browser's `<video>` element automatically requests video in chunks using the `Range` header
-- R2 responds with `206 Partial Content` for each chunk
-- The server is never in the critical path for streaming
-- A 100MB and a 1GB file behave identically — the browser always just fetches the next chunk
+R2's permanently free egress is the key cost driver. Serving video through S3 or GCS would add significant bandwidth costs at scale. Streaming here is free regardless of view count.
 
 ---
 
-## Cost Estimate (light usage)
+## What Was Left Out
 
-| Component | Monthly cost |
+| Feature | Reason |
 |---|---|
-| Cloudflare R2 storage (10GB) | **$0** (free) |
-| Cloudflare R2 egress | **$0** (free) |
-| Railway API (2 vCPU, Memory 1GB, auto-stop) | (free) |
-| Neon Tech Postgres (shared) | (free) |
-| Vercel (SvelteKit frontend) | $0 (free tier) |
-| **Total** | **$0/month** |
-
-R2's free egress is the key cost driver here. Serving video through any other cloud storage provider (S3, GCS) would add significant bandwidth costs at scale.
-
----
-
-## What Was Intentionally Left Out
-
-| Feature | Reason omitted |
-|---|---|
-| HLS/DASH adaptive streaming | Breaks time-to-stream requirement |
-| User accounts / authentication | Requirements allow anonymous upload |
-| Video thumbnails | Not required; straightforward to add |
-| Link expiry | Not required; UUID security is sufficient for a private service |
+| HLS/DASH adaptive streaming | Conflicts with time-to-stream requirement |
+| User accounts / auth | Requirements allow anonymous upload; UUID access is sufficient |
+| Video thumbnails | Not required; straightforward to add later |
+| Link expiry | Not required; UUID is sufficient for a private service |
 | Multipart upload | Single PUT handles up to 5GB on R2; 1GB limit is well within range |
-| Format conversion (MKV → MP4) | Would require transcoding; rejected above |
+| MKV / AVI support | Not natively playable in `<video>` without transcoding |
 
 ---
 
 ## Deployment
 
-### Backend (Fly.io)
+### Backend (Railway)
+
 ```bash
 cd backend
-fly launch          # first time
-fly secrets set DATABASE_URL=... R2_ACCOUNT_ID=... R2_ACCESS_KEY_ID=... R2_SECRET_ACCESS_KEY=... R2_BUCKET=... PUBLIC_URL=https://streamvault-api.fly.dev
-fly deploy
+# Set environment variables in Railway dashboard:
+# DATABASE_URL, R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, PUBLIC_URL
+railway up
 ```
 
 ### Frontend (Vercel)
+
 ```bash
 cd frontend
-# Set PUBLIC_API_URL=https://streamvault-api.fly.dev in Vercel project settings
+# Set PUBLIC_API_URL=https://your-api.railway.app in Vercel project settings
 vercel deploy
 ```
 
-### Cloudflare R2 Setup
-1. Create a bucket named `streamvault-videos` in Cloudflare R2
-2. Create an R2 API token with Object Read & Write permissions
-3. Set the bucket CORS policy to allow PUT from your frontend origin
+### Cloudflare R2
+
+1. Create bucket `streamvault-videos`
+2. Create API token with Object Read & Write permissions
+3. Add production frontend URL to bucket CORS policy `AllowedOrigins`
