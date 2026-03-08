@@ -234,6 +234,8 @@
 <style>
     main {
         min-height: 100vh;
+        width: 100%;
+        max-width: 100%;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -241,12 +243,16 @@
         padding: 1.5rem 1rem;
         gap: 2rem;
         position: relative;
+        overflow: hidden;
     }
 
     main::before {
         content: "";
         position: fixed;
-        inset: 0;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
         background: radial-gradient(
                 ellipse 60% 40% at 20% 20%,
                 rgba(232, 255, 0, 0.04) 0%,
@@ -258,6 +264,7 @@
                 transparent 70%
             );
         pointer-events: none;
+        z-index: 0;
     }
 
     /* Header */

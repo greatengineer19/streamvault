@@ -95,9 +95,12 @@
 <style>
     .page {
         min-height: 100vh;
+        width: 100%;
+        max-width: 100%;
         display: flex;
         flex-direction: column;
         background: var(--bg);
+        overflow-x: hidden;
     }
 
     /* Nav */
