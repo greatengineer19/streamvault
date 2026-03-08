@@ -80,7 +80,7 @@ async fn upload_init(
     // Insert pending record into Postgres
     sqlx::query(
         "INSERT into videos (id, filename, size_bytes, mime_type, r2_key, status)
-        VALUES ($1, $2, $3, $4, $5, 'pending)",
+        VALUES ($1, $2, $3, $4, $5, 'pending')",
     )
     .bind(video_id)
     .bind(&body.filename)
