@@ -3,6 +3,8 @@ frontend/node_modules/
 
 # SvelteKit generated files (re-created by npm run dev)
 frontend/.svelte-kit/
+backend/target/
+backend/.env
 
 # Environment files (contain secrets)
 .env

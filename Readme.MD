@@ -172,12 +172,12 @@ The `DATABASE_URL` in `.env.example` already matches the Docker Compose Postgres
 cargo run
 ```
 
-On first run, Cargo downloads and compiles all dependencies — this takes a few minutes. Subsequent runs are fast. The server starts at `http://localhost:8080` and automatically creates the `videos` table in Postgres on boot.
+On first run, Cargo downloads and compiles all dependencies — this takes a few minutes. Subsequent runs are fast. The server starts at `http://localhost:8079` and automatically creates the `videos` table in Postgres on boot.
 
 Verify it's running:
 
 ```bash
-curl http://localhost:8080/api/health
+curl http://localhost:8079/api/health
 # {"status":"ok"}
 ```
 
@@ -204,7 +204,7 @@ App is now running at `http://localhost:5173`. Open it in your browser and you s
 | Service | URL |
 |---|---|
 | SvelteKit frontend | http://localhost:5173 |
-| Rust API | http://localhost:8080 |
+| Rust API | http://localhost:8079 |
 | Postgres | localhost:5432 |
 | Video storage | Cloudflare R2 (real) |
 
