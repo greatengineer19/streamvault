@@ -5,8 +5,8 @@ mod models;
 mod r2;
 mod routes;
 
-use axum::{Router, http::Method};
-use tower_http::cors::{CorsLayer, Any};
+use axum::{Router, http::{Method, HeaderValue}};
+use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -17,11 +17,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Init tracing
     tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::new(
-                std::env::var("RUST_LOG").unwrap_or_else(|_| "streamvault_api=debug,tower_http=debug".into()),
-            )
-        )
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "streamvault_api=debug,tower_http=debug".into()),
+        ))
         .with(tracing_subscriber::fmt::layer())
         .init();
 
@@ -44,17 +42,27 @@ async fn main() -> anyhow::Result<()> {
         config: config.clone(),
     };
 
-    // CORS - allow the SvelteKit frontend origin
+    // CORS — only allow explicitly listed origins
+    // Set ALLOWED_ORIGINS in Railway as comma-separated URLs:
+    // e.g. "http://localhost:5173,https://streamvault-lilac.vercel.app"
+    let allowed_origins = std::env::var("ALLOWED_ORIGINS")
+        .unwrap_or_else(|_| "http://localhost:5173".into());
+
+    let origins: Vec<HeaderValue> = allowed_origins
+        .split(',')
+        .map(|o| o.trim().parse::<HeaderValue>().expect("Invalid origin"))
+        .collect();
+
     let cors = CorsLayer::new()
-                .allow_origin(Any)
-                .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
-                .allow_headers(Any);
+        .allow_origin(origins)
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers(tower_http::cors::Any);
 
     let app = Router::new()
-                .nest("/api", routes::api_router())
-                .layer(cors)
-                .layer(TraceLayer::new_for_http())
-                .with_state(state);
+        .nest("/api", routes::api_router())
+        .layer(cors)
+        .layer(TraceLayer::new_for_http())
+        .with_state(state);
 
     let addr = format!("0.0.0.0:{}", config.port);
     tracing::info!("StreamVault API listening on {}", addr);
